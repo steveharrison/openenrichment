@@ -1,0 +1,109 @@
+/* Open Enrichment — visual language ported from FinancesApp's steve-ui theme:
+ * oklch tint ladder derived from a base hue, macOS-style solid blue button
+ * with a soft bevel, 8px-radius inputs with a blue focus ring, and the
+ * lightness ladder flipped for dark mode. */
+
+:root {
+  color-scheme: light dark;
+
+  /* macOS system-blue territory, same as steve-ui theme.css */
+  --tint: oklch(0.6 0.2025 254.6);
+  --gray: oklch(0.5 0 0);
+  --red: oklch(0.6 0.181447 27.0726);
+
+  --gray-50: #ffffff;
+
+  --lightness-100: 98.1187%;
+  --lightness-200: 95.2045%;
+  --lightness-300: 91.1434%;
+  --lightness-400: 85.1751%;
+  --lightness-500: 79.1773%;
+  --lightness-600: 72.3297%;
+  --lightness-900: 57.9699%;
+  --lightness-1000: 51.9076%;
+  --lightness-1200: 41.0821%;
+  --lightness-1400: 29.6725%;
+  --lightness-1600: 16.6959%;
+
+  --chroma-100: calc(l * c * 0.5);
+  --chroma-200: calc(l * c * 0.6);
+  --chroma-300: calc(l * c * 0.7);
+  --chroma-400: calc(l * c * 0.8);
+
+  --page-background: rgb(243 244 246); /* gray-100, FinancesApp panel bg */
+  --card-background: #ffffff;
+  --card-border: #e5e7eb;
+  --card-shadow: 1px 5px 27px rgba(0, 0, 0, 0.09);
+  --card-shadow-stacked: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  /* Hairline ring that keeps a swatch/avatar readable against the card */
+  --swatch-ring: rgb(0 0 0 / 0.15);
+
+  --input-background: #ffffff;
+  --input-border: #dcdcdc;
+  --input-shadow: 0px 1px 0px 0px #0000001f;
+  --input-placeholder: #8d939f;
+
+  --text-strong: #111827;   /* gray-900 */
+  --text-default: rgb(33, 33, 33);  /* gray-700 */
+  --text-muted: #6b7280;    /* gray-500 */
+  --text-subtle: #393939;   /* gray-400 */
+
+  --focus-border: #87aef2;
+  --focus-ring: #98c5ff;
+
+  --link: oklch(from var(--tint) var(--lightness-1000) c h);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gray-50: oklch(22% 0 0);
+
+    --lightness-100: 29.6725%;
+    --lightness-200: 35.3616%;
+    --lightness-300: 41.0821%;
+    --lightness-400: 46.9058%;
+    --lightness-500: 51.9076%;
+    --lightness-600: 57.9699%;
+    --lightness-900: 62.3039%;
+    --lightness-1000: 67.0121%;
+    --lightness-1200: 79.1773%;
+    --lightness-1400: 91.1434%;
+    --lightness-1600: 100%;
+
+    --page-background: rgb(17 24 39); /* gray-900 */
+    --card-background: rgb(31 41 55); /* gray-800 */
+    --card-border: #374151;
+    --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+    --card-shadow-stacked: 0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.45);
+    /* A dark ring vanishes on a dark card — lift it instead */
+    --swatch-ring: rgb(255 255 255 / 0.18);
+
+    --input-background: rgba(255, 255, 255, 0.05);
+    --input-border: #374151;
+    --input-shadow: none;
+    --input-placeholder: #6b7280;
+
+    --text-strong: #f3f4f6;
+    --text-default: #d1d5db;
+    --text-muted: #9ca3af;
+    --text-subtle: #6b7280;
+
+    --focus-border: #60a5fa;
+    --focus-ring: rgba(96, 165, 250, 0.45);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--page-background);
+  color: var(--text-default);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}

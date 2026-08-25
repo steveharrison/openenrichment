@@ -1,0 +1,81 @@
+# Reviewed identifiers the PII scanner (src/tools/scan-pii.mjs) should skip.
+#
+# Everything here is merchant-side: a store or terminal number, or the
+# merchant's public phone line, printed identically on every customer's
+# statement. Nothing in this file may identify a person or a transaction.
+#
+# Format: one "merchant name | flagged text" per line. "#" starts a comment.
+
+# Store / terminal numbers embedded in the descriptor
+7-Eleven | 000000
+7-Eleven | 10645
+7-Eleven | 23601
+7-Eleven | 54107
+Amazon Prime | 00000
+Anita Gelato - Bondi Beach | 66325
+Asda | 04236
+Babette | 111515
+Blackwood Bondi | 100585
+Bunnings | 376000
+Bunnings | 629000
+Bunnings | 676000
+Co-op | 010424
+Co-op | 010431
+Co-op | 011831
+Co-op | 065981
+Co-op | 070273
+Co-op | 070284
+Co-op | 070778
+Co-op | 070798
+Co-op | 108018
+Co-op | 108163
+Co-op | 108374
+Co-op | 310653
+Coles - Neutral Bay | 08291
+Domino's Pizza | 01928
+Haigh's | 30010
+KFC | 00826834
+KFC | 022683
+KFC | 15003
+KFC | 301009
+Maple + Clove | 109294
+Shell | 051106
+Shell | 052506
+Starbucks | 00101
+Starbucks | 00240
+Starbucks | 00511
+Starbucks | 00844
+Starbucks | 00852
+Starbucks | 02208
+Subway | 00010488
+Target | 00002014
+Target | 00002055
+Target | 00002303
+The Grounds of The City | 47741
+WH Smith | 78125632
+Woolworths - Mascot | 14421
+Woolworths Metro - Double Bay | 15271
+
+# Merchant public phone numbers shown on all statements
+Afterpay | 52896014
+Audible | 8882835051
+Domino's Pizza | 5058762323
+Harris Farm Markets | 0293943111
+Heathrow Express | 07730147935
+Heathrow Express | 6041515
+HelloFresh | 7332414
+Hulu | 8778015441
+Just Eat | 02067
+Just Eat | 362061
+Just Eat | 7362006
+Klarna | 5527621
+Klarna | 6648073
+Microsoft | 08003865550
+Patreon | 9728766
+Silver Service | 133100
+Sketch | 3197010
+Steam | 88996
+Steam | 8899642
+Steam | 9522985
+Trainline | 08712
+Uber | 35314369001

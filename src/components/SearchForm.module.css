@@ -1,0 +1,99 @@
+/* Search form — steve-ui Input + primary Button */
+
+.search {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  appearance: none;
+  flex: 1;
+  height: 36px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-strong);
+  background-color: var(--input-background);
+  box-shadow: var(--input-shadow);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.input:focus {
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.input:disabled {
+  opacity: 0.5;
+}
+
+/* Button — steve-ui solid/primary bevel */
+
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border-radius: 8px;
+  border: none;
+  padding: 6px 16px;
+  height: 36px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  cursor: default;
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition-property: background, color, box-shadow, transform;
+  transition-duration: 150ms;
+}
+
+.button:focus-visible {
+  outline: 2px solid oklch(from var(--tint) var(--lightness-1000) c h);
+  outline-offset: 2px;
+}
+
+.button.primary {
+  --button-background: oklch(from var(--tint) 55% c h);
+  --button-border: oklch(from var(--tint) 50% c h);
+  background: var(--button-background);
+  color: #ffffff;
+  box-shadow:
+    inset 0 -1px 0 oklch(from var(--tint) 30% c h),
+    inset 0 0 0 1px var(--button-border),
+    inset 0 2px 0 rgb(255 255 255 / 0.2),
+    inset 0 -8px 8px var(--button-border);
+}
+
+@media (prefers-color-scheme: dark) {
+  .button.primary {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      inset 0 8px 8px rgb(255 255 255 / 0.2),
+      inset 0 0 0 1px var(--button-border);
+  }
+}
+
+.button.primary:active:not(:disabled) {
+  transform: scale(0.97);
+  --button-background: oklch(from var(--tint) 50% c h);
+}
+
+.button:disabled {
+  pointer-events: none;
+  box-shadow: none;
+  background: var(--card-border);
+  color: var(--text-subtle);
+}

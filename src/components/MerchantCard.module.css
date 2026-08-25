@@ -1,0 +1,286 @@
+.card {
+  position: relative;
+  background: var(--card-background);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  box-shadow: 1px 5px 27px rgba(0, 0, 0, 0.09);
+  padding: 20px;
+  animation: card-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Parent record stacked on top of the matched card */
+.card.stacked {
+  transform: scale(0.985);
+  transform-origin: bottom center;
+  box-shadow: var(--card-shadow-stacked);
+  z-index: 1;
+  animation: none; /* the slot animates the reveal instead */
+}
+
+/* Collapsible slot that reveals the stacked parent card: the row grows from
+   0fr while the card slides up, and the reverse plays before unmount */
+.parentSlot {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin-bottom: -8px;
+}
+
+.parentSlot + .card {
+  position: relative;
+  z-index: 2;
+}
+
+.parentSlotInner {
+  min-height: 0;
+  transition: opacity 260ms ease, translate 260ms ease;
+}
+
+/* Clip only while animating so the card shadow isn't cut at rest */
+.parentSlot.opening,
+.parentSlot.closing {
+  overflow: clip;
+  transition: grid-template-rows 260ms ease;
+}
+
+@starting-style {
+  .parentSlot.opening {
+    grid-template-rows: 0fr;
+  }
+
+  .parentSlot.opening .parentSlotInner {
+    opacity: 0;
+    translate: 0 24px;
+  }
+}
+
+.parentSlot.closing {
+  grid-template-rows: 0fr;
+}
+
+.parentSlot.closing .parentSlotInner {
+  opacity: 0;
+  translate: 0 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parentSlot.opening,
+  .parentSlot.closing {
+    transition-duration: 100ms;
+  }
+
+  .parentSlotInner {
+    transition-duration: 100ms;
+  }
+
+  .parentSlot.closing .parentSlotInner {
+    translate: none;
+  }
+
+  @starting-style {
+    .parentSlot.opening .parentSlotInner {
+      translate: none;
+    }
+  }
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+}
+
+.categoryPath {
+  cursor: help; /* title= reveals the underlying category id */
+}
+
+.categorySeparator {
+  opacity: 0.45;
+}
+
+.mccName {
+  opacity: 0.7;
+}
+
+.colorValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.colorSwatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--swatch-ring);
+}
+
+.avatarIcon {
+  object-fit: cover;
+  background: #ffffff;
+  font-size: 0;
+}
+
+.cardClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--page-background);
+  cursor: default;
+  transition: background 150ms, color 150ms;
+}
+
+.cardClose svg {
+  display: block;
+}
+
+.cardClose:hover {
+  color: var(--text-strong);
+  background: var(--card-border);
+}
+
+.cardClose:focus-visible {
+  outline: 2px solid oklch(from var(--tint) var(--lightness-1000) c h);
+  outline-offset: 2px;
+}
+
+.parentLink {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--link);
+  cursor: default;
+}
+
+.parentLink:hover {
+  text-decoration: underline;
+}
+
+.parentLink:focus-visible {
+  outline: 2px solid oklch(from var(--tint) var(--lightness-1000) c h);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.merchantName {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+.merchantParent {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.cardDetails {
+  margin: 16px 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+}
+
+.cardDetails dt {
+  font-size: 13px;
+  color: var(--text-subtle);
+}
+
+.cardDetails dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-default);
+  overflow-wrap: anywhere;
+}
+
+.cardDetails a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.cardDetails a:hover {
+  text-decoration: underline;
+}
+
+.exampleList {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* Raw transaction texts rely on run-length spacing (e.g. column padding) */
+.exampleList code {
+  white-space: pre-wrap;
+}
+
+.ruleHeader {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--card-border);
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.card code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  background: var(--page-background);
+  border: 1px solid var(--card-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* Empty / no-match card */
+
+.card.noMatch {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.card.noMatch .title {
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 0 0 4px;
+}
+
+.card.noMatch p {
+  margin: 0;
+  font-size: 13px;
+}
