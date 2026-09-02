@@ -35,6 +35,8 @@ jobs:
         env:
           VITE_GOOGLE_MAPS_EMBED_KEY: ${{ secrets.VITE_GOOGLE_MAPS_EMBED_KEY }}
           VITE_MAPKIT_TOKEN: ${{ secrets.VITE_MAPKIT_TOKEN }}
+          # GA4 measurement ID. Public by nature (it ships in the page), so no secret needed.
+          VITE_GA_MEASUREMENT_ID: G-M7K72C56ZB
 
       - uses: actions/configure-pages@v5
 
