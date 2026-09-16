@@ -1,0 +1,2 @@
+"name","website_url","id","icon_url","address","latitude","longitude","category_id","parent_id","background_colour","colour","apple_place_id","google_place_id","mcc","transaction_text_regexp","transaction_text_examples"
+"Qatar Duty Free","https://qatardutyfree.com","9e8b4d7c-66c7-4d13-b0ae-c7c848d5eef0","qatardutyfree.com.png","","","","18c59161-4dfb-483f-8d77-16df3298c21b","","","","","","5309","(?i)^QATAR DUTY FREE","[`QATAR DUTY FREE HAMAD I DOHA`]"

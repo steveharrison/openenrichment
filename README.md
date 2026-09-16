@@ -17,7 +17,8 @@ The quality of enrichment improves the more accurate data we feed in, so this re
 Feel free to build upon this and submit pull requests to add additional data. You’re welcome to use this data in your own enrichment services.
 
 ## How to use this data
-- The data lives in `src/public/data`. There are three CSV files: `merchants.csv`, `categories.csv`, and `payment_processors.csv`.
+- The data lives in `src/public/data`, split by region. `regions.csv` lists the regions; each has its own folder (`au/`, `uk/`, `us/`, `global/`, …) holding that region's `merchants.csv`, `payment_processors.csv`, and `merchant-icons/`. `categories.csv` is shared by all regions.
+- `global/` holds merchants and processors that turn up on statements everywhere (Apple, Netflix, Uber, Square, PayPal). Load it alongside whichever region(s) you need. A store of a global brand is filed under its own country, with `parent_id` pointing at the global parent, so a child row may reference a parent in `global/`.
 - First strip payment processors from the transaction text. I’ve included an example function in this repository and some common processor prefixes.
 - I've included a list of categories but you can construct your own using the MCC codes.
 - When more than one rule matches, the longest matched substring wins. Length is measured on the text matched rather than on the pattern, so regex syntax doesn't count toward specificity: `^TIE(?: |\s)M` is the longer pattern but `^TIE ME UP` is the better match for "TIE ME UP".
@@ -33,6 +34,7 @@ Merchant
 Child Merchant (e.g. Store Location)
 - Contains specific store location information like address, place IDs, website store URL, and regular expressions that target this store.
 - Does not contain information that is already on the parent merchant, such as logo and colour.
+- Lives in the same region as its parent, unless the parent is in `global/`, in which case it lives in the country the store is in.
 - Not all children transaction texts contain enough information to identify them, so you may have to default to the parent without user intervention. Bespoke Letterpress, for example, uses `BESPOKE LETTERPRESS BOWRAL` on their card readers at stores in Canberra and Sydney, so there is simply no way to detect which store location those transactions came from. The Finances App includes the ability for users to manually change the merchant that a transaction references for situations like these.
 
 ## PII
@@ -47,7 +49,7 @@ I’ve replaced PII info with patterns like ABCDEF and 12345. The data that does
 
 ### Merchant logos and icons
 
-The icons in `merchant-icons/` are the trademarks and copyrighted works of their respective owners. I don’t own them and can’t license them to you — they are **not** covered by this repository’s data licence. They’re included solely to identify the brands they refer to (nominative use), the same way a price-comparison site or news article shows a company’s logo. Nothing here implies any merchant sponsors or endorses this project.
+The icons in each region's `merchant-icons/` folder are the trademarks and copyrighted works of their respective owners. I don’t own them and can’t license them to you — they are **not** covered by this repository’s data licence. They’re included solely to identify the brands they refer to (nominative use), the same way a price-comparison site or news article shows a company’s logo. Nothing here implies any merchant sponsors or endorses this project.
 
 If you redistribute or build on this dataset, the icons are your own legal responsibility in your jurisdiction and context. If you’re a rights holder and want an icon removed or replaced, open an issue or contact me and I’ll take it down promptly.
 

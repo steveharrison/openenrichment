@@ -1,0 +1,2 @@
+"name","website_url","id","icon_url","address","latitude","longitude","category_id","parent_id","background_colour","colour","apple_place_id","google_place_id","mcc","transaction_text_regexp","transaction_text_examples"
+"Katikies","https://katikies.com","df1025b9-86d4-4ffb-a507-c5c39d89ce59","katikies.com.png","","","","e83de4ef-e05b-4219-9a02-70b8590c7cb0","","","","","","7011","(?i)^KATIKIES","[`VIVA*KATIKIES SA        THIRA`]"

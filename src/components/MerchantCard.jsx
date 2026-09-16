@@ -3,16 +3,17 @@ import { avatarColor, merchantLocation, mapLinks } from '../lib/merchant.js';
 import { categoryPath } from '../lib/categories.js';
 import { mccName } from '../lib/mcc.js';
 import MapEmbeds from './MapEmbeds.jsx';
+import RegionBadge from './RegionBadge.jsx';
+import { iconPath } from '../lib/dataset.js';
 import styles from './MerchantCard.module.css';
 
 function Avatar({ merchant }) {
   const [failed, setFailed] = useState(false);
-  const iconFile = (merchant.icon_url || '').trim().split('/').pop();
-  const hasIcon = iconFile && /\.(png|jpe?g|svg|webp|gif)$/i.test(iconFile);
+  const src = iconPath(merchant);
 
   // Fall back to a coloured-initial avatar if there's no usable icon, or the
-  // icon file isn't in merchant-icons/
-  if (!hasIcon || failed) {
+  // icon file isn't in the region's merchant-icons/
+  if (!src || failed) {
     return (
       <div className={styles.avatar} style={{ background: avatarColor(merchant) }}>
         {(merchant.name || '?').trim().charAt(0).toUpperCase()}
@@ -22,7 +23,7 @@ function Avatar({ merchant }) {
   return (
     <img
       className={`${styles.avatar} ${styles.avatarIcon}`}
-      src={`merchant-icons/${encodeURIComponent(iconFile)}`}
+      src={src}
       alt=""
       loading="lazy"
       onError={() => setFailed(true)}
@@ -52,9 +53,10 @@ function DetailRow({ label, children }) {
 }
 
 // Merchant card. `merchantsById` powers the "Child of …" button, which stacks
-// the parent's card on top of this one; `match` (optional) adds the
-// matched-pattern footer; `onClose` (optional) adds a close button.
-export default function MerchantCard({ merchant, merchantsById, categoriesById, match, onClose, stacked, deferMaps }) {
+// the parent's card on top of this one; `regionsByCode` names the region
+// badge; `match` (optional) adds the matched-pattern footer; `onClose`
+// (optional) adds a close button.
+export default function MerchantCard({ merchant, merchantsById, categoriesById, regionsByCode, match, onClose, stacked, deferMaps }) {
   // 'closed' → 'opening' → 'open' → 'closing' → 'closed'; the transitional
   // phases keep the card mounted while the reveal/dismiss animation plays
   const [parentPhase, setParentPhase] = useState('closed');
@@ -95,6 +97,7 @@ export default function MerchantCard({ merchant, merchantsById, categoriesById, 
               merchant={parent}
               merchantsById={merchantsById}
               categoriesById={categoriesById}
+              regionsByCode={regionsByCode}
               stacked
               deferMaps={parentPhase === 'opening'}
               onClose={() => setParentPhase('closing')}
@@ -126,7 +129,7 @@ export default function MerchantCard({ merchant, merchantsById, categoriesById, 
 
         <div className={styles.cardHeader}>
           <Avatar merchant={merchant} />
-          <div>
+          <div className={styles.cardTitle}>
             <h2 className={styles.merchantName}>{merchant.name || 'Unnamed merchant'}</h2>
             {parent && parent.name && (
               <p className={styles.merchantParent}>
@@ -137,6 +140,7 @@ export default function MerchantCard({ merchant, merchantsById, categoriesById, 
               </p>
             )}
           </div>
+          <RegionBadge code={merchant.region} regionsByCode={regionsByCode} />
         </div>
 
         <dl className={styles.cardDetails}>

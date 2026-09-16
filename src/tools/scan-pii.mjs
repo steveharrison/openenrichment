@@ -7,7 +7,7 @@
 // 12345, 1234567890 — and amounts with 12.34 / 1.23. This script flags
 // whatever doesn't look like one of those placeholders.
 //
-//   npm run scan-pii            # scan src/public/data/merchants.csv
+//   npm run scan-pii            # scan every src/public/data/<region>/merchants.csv
 //   node src/tools/scan-pii.mjs path/to/other.csv
 //
 // Exits 1 when it finds anything, so it can gate CI or a pre-commit hook.
@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { csvToObjects } from '../lib/csv.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const csvPath = process.argv[2] ?? join(here, '../public/data/merchants.csv');
+const dataDir = join(here, '../public/data');
 const allowlistPath = join(here, 'pii-allowlist.txt');
 
 // A digit run is a placeholder when each digit is the successor of the one
@@ -129,7 +129,16 @@ function parseExamples(value) {
   return [...value.matchAll(/`([^`]*)`/g)].map((m) => m[1]);
 }
 
-const merchants = csvToObjects(readFileSync(csvPath, 'utf8'));
+// One CSV when a path is given; otherwise every region listed in regions.csv
+function loadMerchants() {
+  if (process.argv[2]) return csvToObjects(readFileSync(process.argv[2], 'utf8'));
+  const regions = csvToObjects(readFileSync(join(dataDir, 'regions.csv'), 'utf8'));
+  return regions.flatMap((region) =>
+    csvToObjects(readFileSync(join(dataDir, region.code, 'merchants.csv'), 'utf8')),
+  );
+}
+
+const merchants = loadMerchants();
 const allowlist = loadAllowlist();
 const findings = [];
 let allowlisted = 0;

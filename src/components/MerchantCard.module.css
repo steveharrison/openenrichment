@@ -108,6 +108,11 @@
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
 }
 
+.cardTitle {
+  flex: 1;
+  min-width: 0;
+}
+
 .categoryPath {
   cursor: help; /* title= reveals the underlying category id */
 }

@@ -1,0 +1,2 @@
+"name","website_url","id","icon_url","address","latitude","longitude","category_id","parent_id","background_colour","colour","apple_place_id","google_place_id","mcc","transaction_text_regexp","transaction_text_examples"
+"Grab","https://grab.com","068e428b-09f7-4b59-9c09-77359498e4c1","grab.com.png","","","","cfc18400-14ce-401b-8855-da267c201933","","","#23ab4d","","","4121","(?i)^Grab\b","[`Grab, Singapore`]"
