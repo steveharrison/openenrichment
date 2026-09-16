@@ -1,47 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Masthead from './components/Masthead.jsx';
 import SearchForm from './components/SearchForm.jsx';
 import MerchantCard, { NoMatchCard } from './components/MerchantCard.jsx';
-import { csvToObjects } from './lib/csv.js';
-import { buildCategoryIndex } from './lib/categories.js';
+import RegionBrowser from './components/RegionBrowser.jsx';
+import { loadDataset } from './lib/dataset.js';
 import { buildMatchers, findMerchantMatch } from './lib/rules.js';
-import { parsePaymentProcessors, setPaymentProcessors } from './lib/paymentProcessors.js';
 import styles from './App.module.css';
 
 export default function App() {
-  const [data, setData] = useState(null); // { matchers, merchantsById, categoriesById }
+  const [data, setData] = useState(null); // { merchants, matchers, merchantsById, categoriesById, regions, regionsByCode }
   const [loadFailed, setLoadFailed] = useState(false);
+  // { type: 'match', match } from the search box, { type: 'merchant', merchant }
+  // from the region browser, or { type: 'no-match', query }
   const [result, setResult] = useState(null);
+  const resultRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const [merchantsRes, categoriesRes, processorsRes] = await Promise.all([
-          fetch('data/merchants.csv'),
-          // Categories only label the card, so a missing file isn't fatal
-          fetch('data/categories.csv').catch(() => null),
-          // Processors fall back to a built-in list, so this isn't fatal either
-          fetch('data/payment_processors.csv').catch(() => null),
-        ]);
-        if (!merchantsRes.ok) throw new Error('HTTP error');
-
-        // Set before any matching runs — the matcher strips processor prefixes
-        if (processorsRes?.ok) {
-          setPaymentProcessors(parsePaymentProcessors(csvToObjects(await processorsRes.text())));
-        }
-
-        const merchants = csvToObjects(await merchantsRes.text());
+        const { regions, regionsByCode, merchants, categoriesById } = await loadDataset();
         const merchantsById = new Map();
         for (const merchant of merchants) {
           if (merchant.id) merchantsById.set(merchant.id, merchant);
         }
         const matchers = buildMatchers(merchants);
-        const categoriesById = categoriesRes?.ok
-          ? buildCategoryIndex(csvToObjects(await categoriesRes.text()))
-          : new Map();
-        if (!cancelled) setData({ matchers, merchantsById, categoriesById });
+        if (!cancelled) setData({ merchants, matchers, merchantsById, categoriesById, regions, regionsByCode });
       } catch {
         if (!cancelled) setLoadFailed(true);
       }
@@ -67,8 +52,10 @@ export default function App() {
   if (loadFailed) {
     statusText = 'Could not load the CSV data. If you opened this page from disk, serve it over HTTP (e.g. npm run dev).';
   } else if (data) {
-    statusText = `${data.merchantsById.size.toLocaleString()} merchants · ${data.matchers.length.toLocaleString()} with transaction patterns`;
+    statusText = `${data.merchantsById.size.toLocaleString()} merchants across ${data.regions.length} regions · ${data.matchers.length.toLocaleString()} with transaction patterns`;
   }
+
+  const shownMerchant = result?.type === 'match' ? result.match.merchant : result?.type === 'merchant' ? result.merchant : null;
 
   return (
     <main className={styles.page}>
@@ -80,23 +67,38 @@ export default function App() {
         {statusText}
       </div>
 
-      <section className={styles.result} aria-live="polite">
-        {result?.type === 'match' && (
+      <section ref={resultRef} className={styles.result} aria-live="polite">
+        {shownMerchant && (
           <MerchantCard
-            key={result.match.merchant.id}
-            merchant={result.match.merchant}
+            key={shownMerchant.id}
+            merchant={shownMerchant}
             merchantsById={data.merchantsById}
             categoriesById={data.categoriesById}
-            match={result.match}
+            regionsByCode={data.regionsByCode}
+            match={result.type === 'match' ? result.match : undefined}
           />
         )}
         {result?.type === 'no-match' && <NoMatchCard query={result.query} />}
       </section>
 
+      {data && (
+        <RegionBrowser
+          regions={data.regions}
+          merchants={data.merchants}
+          merchantsById={data.merchantsById}
+          selectedId={shownMerchant?.id}
+          onSelect={(merchant) => {
+            setResult({ type: 'merchant', merchant });
+            // The card renders above the list, so bring it into view
+            resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+        />
+      )}
+
       <footer className={styles.footer}>
         <p>
-          Matching runs entirely in your browser against{' '}
-          <a href="data/merchants.csv">merchants.csv</a>.
+          Matching runs entirely in your browser against every region's <code>merchants.csv</code> under{' '}
+          <a href="data/regions.csv">data/</a>.
         </p>
       </footer>
     </main>
