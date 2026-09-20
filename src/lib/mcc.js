@@ -56,6 +56,7 @@ const MCC_NAMES = {
   6300: 'Insurance Sales & Premiums',
   6513: 'Real Estate Agents & Managers — Rentals',
   7011: 'Lodging — Hotels, Motels & Resorts',
+  7276: 'Tax Preparation Services',
   7298: 'Health & Beauty Spas',
   7299: 'Miscellaneous Personal Services',
   7333: 'Commercial Photography, Art & Graphics',
