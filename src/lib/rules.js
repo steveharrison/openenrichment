@@ -15,7 +15,7 @@ const SUPPORTED_INLINE_FLAGS = 'imsu';
 // "(?i)^FOO" -> { source: "^FOO", flags: "i" }. Only flags at the very start
 // are lifted: a `(?i)` in the middle of a pattern is scoped to what follows
 // it, and moving it would change the meaning.
-function translatePattern(pattern) {
+export function translatePattern(pattern) {
   let source = pattern;
   let flags = '';
   let match;

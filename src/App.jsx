@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import Masthead from './components/Masthead.jsx';
 import SearchForm from './components/SearchForm.jsx';
 import MerchantCard, { NoMatchCard } from './components/MerchantCard.jsx';
@@ -6,6 +6,20 @@ import RegionBrowser from './components/RegionBrowser.jsx';
 import { loadDataset } from './lib/dataset.js';
 import { buildMatchers, findMerchantMatch } from './lib/rules.js';
 import styles from './App.module.css';
+
+// The local editor writes through a dev-server endpoint, so production builds
+// leave it out entirely
+const MerchantEditor = import.meta.env.DEV ? lazy(() => import('./components/MerchantEditor.jsx')) : null;
+
+async function loadData(options) {
+  const { regions, regionsByCode, merchants, categoriesById } = await loadDataset(options);
+  const merchantsById = new Map();
+  for (const merchant of merchants) {
+    if (merchant.id) merchantsById.set(merchant.id, merchant);
+  }
+  const matchers = buildMatchers(merchants);
+  return { merchants, matchers, merchantsById, categoriesById, regions, regionsByCode };
+}
 
 export default function App() {
   const [data, setData] = useState(null); // { merchants, matchers, merchantsById, categoriesById, regions, regionsByCode }
@@ -20,13 +34,8 @@ export default function App() {
 
     async function load() {
       try {
-        const { regions, regionsByCode, merchants, categoriesById } = await loadDataset();
-        const merchantsById = new Map();
-        for (const merchant of merchants) {
-          if (merchant.id) merchantsById.set(merchant.id, merchant);
-        }
-        const matchers = buildMatchers(merchants);
-        if (!cancelled) setData({ merchants, matchers, merchantsById, categoriesById, regions, regionsByCode });
+        const loaded = await loadData();
+        if (!cancelled) setData(loaded);
       } catch {
         if (!cancelled) setLoadFailed(true);
       }
@@ -37,6 +46,17 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  // Reloads the CSVs after the editor saves, then shows the new merchant
+  async function handleCreated(created) {
+    const loaded = await loadData({ fresh: true });
+    setData(loaded);
+    const merchant = loaded.merchantsById.get(created.id);
+    if (merchant) {
+      setResult({ type: 'merchant', merchant });
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
 
   function handleSearch(query) {
     if (!query) {
@@ -93,6 +113,12 @@ export default function App() {
             resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}
         />
+      )}
+
+      {MerchantEditor && data && (
+        <Suspense fallback={null}>
+          <MerchantEditor data={data} onCreated={handleCreated} />
+        </Suspense>
       )}
 
       <footer className={styles.footer}>

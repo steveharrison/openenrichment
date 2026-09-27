@@ -41,6 +41,12 @@ Child Merchant (e.g. Store Location)
 
 I’ve replaced PII info with patterns like ABCDEF and 12345. The data that does remain is store numbers and merchant phone numbers, which sometimes appear in the transaction description.
 
+## Adding merchants locally
+
+Run `npm run dev` and use the **Add merchant** form under the region list. It adds a row to `src/public/data/<region>/merchants.csv` in sorted position, saves an uploaded icon to that region's `merchant-icons/`, and tests the transaction pattern against your examples before you save. The form only exists on the dev server; the built site stays read-only.
+
+The form's lookup box searches Google Maps and Apple Maps and fills in the place IDs, address, coordinates, website, region, MCC, category, icon and colour. It also sets the parent when an existing brand has the same website domain. It needs `GOOGLE_MAPS_API_KEY` and/or `APPLE_MAPS_CREDENTIALS_FILE` in `.env.local` (see `.env.example`). The dev server makes these calls, so the credentials never reach the browser.
+
 ## Submitting pull requests
 - Don't include merchants that you don't want to be associated to your GitHub user account (can always submit with an anonymous account).
 - Please make sure to remove PII before raising a pull request. I've included a script that identifies some, but not all, of the possible PII. Common PII is amounts, receipt numbers, ard numbers.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { avatarColor, merchantLocation, mapLinks } from '../lib/merchant.js';
+import { avatarColor, merchantLocation, mapLinks, parseExamples } from '../lib/merchant.js';
 import { categoryPath } from '../lib/categories.js';
 import { mccName } from '../lib/mcc.js';
 import MapEmbeds from './MapEmbeds.jsx';
@@ -29,18 +29,6 @@ function Avatar({ merchant }) {
       onError={() => setFailed(true)}
     />
   );
-}
-
-// The CSV holds examples either as a plain string or as a backtick-quoted
-// list like [`FIRST EXAMPLE`, `SECOND EXAMPLE`]
-function parseExamples(raw) {
-  const text = (raw || '').trim();
-  if (!text) return [];
-  if (text.startsWith('[') && text.endsWith(']')) {
-    const items = [...text.matchAll(/`([^`]*)`/g)].map((m) => m[1].trim()).filter(Boolean);
-    if (items.length) return items;
-  }
-  return [text];
 }
 
 function DetailRow({ label, children }) {

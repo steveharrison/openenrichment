@@ -21,10 +21,10 @@ export function sortRegions(regions) {
   });
 }
 
-async function fetchCsv(path, { optional = false } = {}) {
+async function fetchCsv(path, { optional = false, fresh = false } = {}) {
   let res;
   try {
-    res = await fetch(path);
+    res = await fetch(path, fresh ? { cache: 'no-cache' } : undefined);
   } catch (err) {
     if (optional) return [];
     throw err;
@@ -39,10 +39,11 @@ async function fetchCsv(path, { optional = false } = {}) {
 // Resolves to { regions, regionsByCode, merchants, categoriesById }. Each
 // region carries a `merchantCount`. Payment processors are installed into the
 // matcher as a side effect, before the promise resolves, so matching never
-// runs without them.
-export async function loadDataset() {
+// runs without them. `fresh` revalidates every file, for a reload after the
+// local editor has written to them.
+export async function loadDataset({ fresh = false } = {}) {
   const regions = sortRegions(
-    (await fetchCsv('data/regions.csv'))
+    (await fetchCsv('data/regions.csv', { fresh }))
       .filter((r) => r.code)
       .map((r) => ({ code: r.code.trim(), name: (r.name || r.code).trim() }))
   );
@@ -52,9 +53,9 @@ export async function loadDataset() {
     Promise.all(
       regions.map(async (region) => {
         const [merchants, processors] = await Promise.all([
-          fetchCsv(`data/${region.code}/merchants.csv`),
+          fetchCsv(`data/${region.code}/merchants.csv`, { fresh }),
           // A region without its own processors just contributes none
-          fetchCsv(`data/${region.code}/payment_processors.csv`, { optional: true }),
+          fetchCsv(`data/${region.code}/payment_processors.csv`, { optional: true, fresh }),
         ]);
         for (const merchant of merchants) merchant.region = region.code;
         region.merchantCount = merchants.length;
@@ -62,7 +63,7 @@ export async function loadDataset() {
       })
     ),
     // Categories only label the card, so a missing file isn't fatal
-    fetchCsv('data/categories.csv', { optional: true }),
+    fetchCsv('data/categories.csv', { optional: true, fresh }),
   ]);
 
   // Processors fall back to a built-in list when every region's file is empty

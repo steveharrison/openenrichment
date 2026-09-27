@@ -62,3 +62,15 @@ export function mapLinks(merchant, location) {
   if (!apple && !google) return null;
   return { apple: apple?.href ?? null, google: google?.href ?? null };
 }
+
+// The CSV holds examples either as a plain string or as a backtick-quoted
+// list like [`FIRST EXAMPLE`, `SECOND EXAMPLE`]
+export function parseExamples(raw) {
+  const text = (raw || '').trim();
+  if (!text) return [];
+  if (text.startsWith('[') && text.endsWith(']')) {
+    const items = [...text.matchAll(/`([^`]*)`/g)].map((m) => m[1].trim()).filter(Boolean);
+    if (items.length) return items;
+  }
+  return [text];
+}
