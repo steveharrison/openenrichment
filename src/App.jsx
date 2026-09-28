@@ -28,6 +28,8 @@ export default function App() {
   // from the region browser, or { type: 'no-match', query }
   const [result, setResult] = useState(null);
   const resultRef = useRef(null);
+  const [editing, setEditing] = useState(null); // the merchant open in the local editor
+  const editorRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,11 +49,17 @@ export default function App() {
     };
   }, []);
 
-  // Reloads the CSVs after the editor saves, then shows the new merchant
-  async function handleCreated(created) {
+  // The editor sits below the region list, so bring it into view
+  useEffect(() => {
+    if (editing) editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [editing]);
+
+  // Reloads the CSVs after the editor saves, then shows the saved merchant
+  async function handleSaved(saved) {
     const loaded = await loadData({ fresh: true });
     setData(loaded);
-    const merchant = loaded.merchantsById.get(created.id);
+    setEditing(null);
+    const merchant = loaded.merchantsById.get(saved.id);
     if (merchant) {
       setResult({ type: 'merchant', merchant });
       resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -96,6 +104,7 @@ export default function App() {
             categoriesById={data.categoriesById}
             regionsByCode={data.regionsByCode}
             match={result.type === 'match' ? result.match : undefined}
+            onEdit={MerchantEditor ? setEditing : undefined}
           />
         )}
         {result?.type === 'no-match' && <NoMatchCard query={result.query} />}
@@ -116,9 +125,17 @@ export default function App() {
       )}
 
       {MerchantEditor && data && (
-        <Suspense fallback={null}>
-          <MerchantEditor data={data} onCreated={handleCreated} />
-        </Suspense>
+        <div ref={editorRef} className={styles.editor}>
+          <Suspense fallback={null}>
+            <MerchantEditor
+              key={editing?.id ?? 'new'}
+              data={data}
+              editing={editing}
+              onSaved={handleSaved}
+              onEditDone={() => setEditing(null)}
+            />
+          </Suspense>
+        </div>
       )}
 
       <footer className={styles.footer}>

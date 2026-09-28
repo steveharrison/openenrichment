@@ -31,3 +31,7 @@
   color: inherit;
   text-decoration: underline;
 }
+
+.editor {
+  scroll-margin-top: 16px;
+}

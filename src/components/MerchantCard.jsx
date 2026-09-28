@@ -43,8 +43,9 @@ function DetailRow({ label, children }) {
 // Merchant card. `merchantsById` powers the "Child of …" button, which stacks
 // the parent's card on top of this one; `regionsByCode` names the region
 // badge; `match` (optional) adds the matched-pattern footer; `onClose`
-// (optional) adds a close button.
-export default function MerchantCard({ merchant, merchantsById, categoriesById, regionsByCode, match, onClose, stacked, deferMaps }) {
+// (optional) adds a close button; `onEdit(merchant)` (optional, local dev
+// only) adds an Edit button.
+export default function MerchantCard({ merchant, merchantsById, categoriesById, regionsByCode, match, onClose, onEdit, stacked, deferMaps }) {
   // 'closed' → 'opening' → 'open' → 'closing' → 'closed'; the transitional
   // phases keep the card mounted while the reveal/dismiss animation plays
   const [parentPhase, setParentPhase] = useState('closed');
@@ -88,6 +89,7 @@ export default function MerchantCard({ merchant, merchantsById, categoriesById, 
               regionsByCode={regionsByCode}
               stacked
               deferMaps={parentPhase === 'opening'}
+              onEdit={onEdit}
               onClose={() => setParentPhase('closing')}
             />
           </div>
@@ -129,6 +131,11 @@ export default function MerchantCard({ merchant, merchantsById, categoriesById, 
             )}
           </div>
           <RegionBadge code={merchant.region} regionsByCode={regionsByCode} />
+          {onEdit && (
+            <button type="button" className={styles.editButton} onClick={() => onEdit(merchant)}>
+              Edit
+            </button>
+          )}
         </div>
 
         <dl className={styles.cardDetails}>

@@ -1,4 +1,5 @@
-// Dev-only Vite plugin: lets the local site add merchants to the dataset.
+// Dev-only Vite plugin: lets the local site add and edit merchants in the
+// dataset.
 //
 // `npm run dev` gets these endpoints; `apply: 'serve'` keeps them out of
 // builds, so the published site stays read-only:
@@ -7,6 +8,10 @@
 //                                   sorted position, see lib/merchantOrder.js)
 //                                   and write an uploaded icon to that region's
 //                                   merchant-icons/
+//   PUT  /__editor/merchants        replace the row with the posted id in
+//                                   that region's merchants.csv; it moves (with
+//                                   its branches) only when its name or parent
+//                                   changes
 //   GET  /__editor/places/status    which map providers have credentials
 //   GET  /__editor/places/search    Google + Apple suggestions for ?q=
 //   POST /__editor/places/details   full details for one picked suggestion
@@ -124,30 +129,50 @@ async function buildRow(dataDir, input) {
   return { region, row: m };
 }
 
-async function appendMerchant(dataDir, input) {
-  const { region, row } = await buildRow(dataDir, input);
-  const regionDir = path.join(dataDir, region);
-  const csvFile = path.join(regionDir, 'merchants.csv');
+const sameId = (a, b) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+
+// A region's merchants.csv, as its header and its rows
+async function readRegion(dataDir, region) {
+  const csvFile = path.join(dataDir, region, 'merchants.csv');
   const text = await fs.readFile(csvFile, 'utf8');
   const [header] = parseCSV(text);
-  const existing = csvToObjects(text);
+  return { csvFile, header, rows: csvToObjects(text) };
+}
 
-  if (row.parent_id) {
-    // A parent can sit in this region or in another one (e.g. a global brand)
-    const others = await Promise.all(
-      (await readCsv(path.join(dataDir, 'regions.csv')))
-        .map((r) => r.code.trim())
-        .filter((code) => code && code !== region)
-        .map((code) => readCsv(path.join(dataDir, code, 'merchants.csv')).catch(() => []))
-    );
-    const known = [existing, ...others].flat().some((r) => r.id.toLowerCase() === row.parent_id.toLowerCase());
-    if (!known) throw new InputError('Parent merchant does not exist');
-  }
+// A parent can sit in this region or in another one (e.g. a global brand)
+async function checkParent(dataDir, region, rows, parentId) {
+  const others = await Promise.all(
+    (await readCsv(path.join(dataDir, 'regions.csv')))
+      .map((r) => r.code.trim())
+      .filter((code) => code && code !== region)
+      .map((code) => readCsv(path.join(dataDir, code, 'merchants.csv')).catch(() => []))
+  );
+  if (![rows, ...others].flat().some((r) => sameId(r.id, parentId))) throw new InputError('Parent merchant does not exist');
+}
+
+// Every file is fully quoted with \n endings, so rewriting it only changes
+// the lines that changed
+async function writeRegion({ csvFile, header }, rows) {
+  const lines = [header, ...rows.map((r) => header.map((key) => r[key] ?? ''))].map(csvLine);
+  await fs.writeFile(csvFile, `${lines.join('\n')}\n`);
+}
+
+async function writeIcon(file, data) {
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, Buffer.from(data, 'base64'));
+}
+
+async function appendMerchant(dataDir, input) {
+  const { region, row } = await buildRow(dataDir, input);
+  const file = await readRegion(dataDir, region);
+  const existing = file.rows;
+
+  if (row.parent_id) await checkParent(dataDir, region, existing, row.parent_id);
 
   let iconFile = null;
   if (input.icon?.data) {
     if (!row.icon_url) throw new InputError('Give the icon a file name');
-    iconFile = path.join(regionDir, 'merchant-icons', row.icon_url);
+    iconFile = path.join(dataDir, region, 'merchant-icons', row.icon_url);
     if (await exists(iconFile)) throw new InputError(`merchant-icons/${row.icon_url} already exists in ${region}`);
   }
 
@@ -155,16 +180,57 @@ async function appendMerchant(dataDir, input) {
   const at = insertionIndex(existing, row);
   const rows = [...existing.slice(0, at), row, ...existing.slice(at)];
 
-  if (iconFile) {
-    await fs.mkdir(path.dirname(iconFile), { recursive: true });
-    await fs.writeFile(iconFile, Buffer.from(input.icon.data, 'base64'));
-  }
-  // Every file is fully quoted with \n endings, so rewriting it only changes
-  // the new line
-  const lines = [header, ...rows.map((r) => header.map((key) => r[key] ?? ''))].map(csvLine);
-  await fs.writeFile(csvFile, `${lines.join('\n')}\n`);
+  if (iconFile) await writeIcon(iconFile, input.icon.data);
+  await writeRegion(file, rows);
 
-  return { region, merchant: Object.fromEntries(header.map((key) => [key, row[key] ?? ''])) };
+  return { region, merchant: Object.fromEntries(file.header.map((key) => [key, row[key] ?? ''])) };
+}
+
+async function updateMerchant(dataDir, input) {
+  const id = String(input.id || '').trim();
+  if (!UUID.test(id)) throw new InputError('Merchant id is not a UUID');
+  const { region, row } = await buildRow(dataDir, input);
+  const file = await readRegion(dataDir, region);
+  const existing = file.rows;
+
+  const old = existing.find((r) => sameId(r.id, id));
+  if (!old) throw new InputError(`No merchant with id ${id} in ${region}`);
+  const children = existing.filter((r) => r !== old && sameId(r.parent_id, id));
+
+  if (row.parent_id) {
+    if (sameId(row.parent_id, id)) throw new InputError('A merchant cannot be its own parent');
+    if (children.length) throw new InputError(`This merchant has ${children.length} branch(es), so it cannot have a parent`);
+    await checkParent(dataDir, region, existing, row.parent_id);
+  }
+
+  // A new upload can replace this merchant's own icon file, but not another one
+  let iconFile = null;
+  if (input.icon?.data) {
+    if (!row.icon_url) throw new InputError('Give the icon a file name');
+    iconFile = path.join(dataDir, region, 'merchant-icons', row.icon_url);
+    if (row.icon_url !== (old.icon_url || '').trim() && (await exists(iconFile))) {
+      throw new InputError(`merchant-icons/${row.icon_url} already exists in ${region}`);
+    }
+  }
+
+  // Columns the form does not show keep their old values
+  const updated = { ...old, ...row, id: old.id };
+
+  let rows;
+  if (old.name === updated.name && sameId(old.parent_id, updated.parent_id)) {
+    rows = existing.map((r) => (r === old ? updated : r));
+  } else {
+    // Take the row and its branches out, then put them back where the new
+    // name or parent sorts
+    const rest = existing.filter((r) => r !== old && !children.includes(r));
+    const at = insertionIndex(rest, updated);
+    rows = [...rest.slice(0, at), updated, ...children, ...rest.slice(at)];
+  }
+
+  if (iconFile) await writeIcon(iconFile, input.icon.data);
+  await writeRegion(file, rows);
+
+  return { region, merchant: Object.fromEntries(file.header.map((key) => [key, updated[key] ?? ''])) };
 }
 
 export default function merchantEditor({ dataDir, googleKey, appleCredentialsFile }) {
@@ -175,6 +241,11 @@ export default function merchantEditor({ dataDir, googleKey, appleCredentialsFil
       const created = await appendMerchant(dataDir, JSON.parse(await readBody(req)));
       server.config.logger.info(`merchant editor: added "${created.merchant.name}" to ${created.region}`, { timestamp: true });
       return [201, created];
+    },
+    'PUT /merchants': async (req, server) => {
+      const updated = await updateMerchant(dataDir, JSON.parse(await readBody(req)));
+      server.config.logger.info(`merchant editor: updated "${updated.merchant.name}" in ${updated.region}`, { timestamp: true });
+      return [200, updated];
     },
     'GET /places/status': async () => [200, places.status()],
     'GET /places/search': async (req, server, url) => {

@@ -1,4 +1,4 @@
-// Dev-only "Add merchant" form. It posts to the /__editor endpoints that
+// Dev-only "Add merchant" / "Edit merchant" form. It posts to the /__editor endpoints that
 // src/tools/merchant-editor-plugin.mjs adds to `npm run dev`; App only loads
 // this module when import.meta.env.DEV is true, so it never ships.
 
@@ -46,6 +46,10 @@ const KEEP_EDITS = ['transaction_text_regexp', 'icon_url', 'colour'];
 const DRAFT_ID = '__draft__';
 const isDraft = (merchant) => merchant?.id === DRAFT_ID;
 const spliceAt = (list, at, item) => [...list.slice(0, at), item, ...list.slice(at)];
+const sameId = (a, b) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+
+// The form's fields for an existing row
+const fieldsOf = (merchant) => Object.fromEntries(Object.keys(EMPTY).map((key) => [key, (merchant[key] ?? '').trim()]));
 
 // "Matches 3 of 4 examples…" for a choosePattern result
 function describeGenerated({ total, matched, won, taken }) {
@@ -75,13 +79,16 @@ function Field({ label, hint, wide, children }) {
   );
 }
 
-// `data` is App's loaded dataset; `onCreated(merchant)` runs after the row is
-// on disk, with the new row tagged with its region.
-export default function MerchantEditor({ data, onCreated }) {
-  const [open, setOpen] = useState(false);
-  const [region, setRegion] = useState('');
-  const [fields, setFields] = useState(EMPTY);
-  const [examples, setExamples] = useState('');
+// `data` is App's loaded dataset; `onSaved(merchant)` runs after the row is
+// on disk, with the saved row tagged with its region. With `editing` (a row
+// from data.merchants) the form opens filled in and saves over that row;
+// `onEditDone()` runs when the user cancels. App remounts the form for each
+// merchant it edits.
+export default function MerchantEditor({ data, editing, onSaved, onEditDone }) {
+  const [open, setOpen] = useState(Boolean(editing));
+  const [region, setRegion] = useState(editing?.region ?? '');
+  const [fields, setFields] = useState(() => (editing ? fieldsOf(editing) : EMPTY));
+  const [examples, setExamples] = useState(() => (editing ? parseExamples(editing.transaction_text_examples).join('\n') : ''));
   const [icon, setIcon] = useState(null); // { file, preview }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -100,18 +107,22 @@ export default function MerchantEditor({ data, onCreated }) {
     [data.categoriesById]
   );
 
+  // Every row except the one being edited
+  const others = useMemo(() => (editing ? data.merchants.filter((m) => m !== editing) : data.merchants), [data.merchants, editing]);
+  const hasBranches = useMemo(() => Boolean(editing) && data.merchants.some((m) => sameId(m.parent_id, editing.id)), [data.merchants, editing]);
+
   // Only top-level merchants can be parents, grouped by region
   const parentGroups = useMemo(
     () =>
       data.regions
         .map((r) => ({
           region: r,
-          merchants: data.merchants
+          merchants: others
             .filter((m) => m.region === r.code && m.id && !m.parent_id)
             .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
         }))
         .filter((g) => g.merchants.length),
-    [data.regions, data.merchants]
+    [data.regions, others]
   );
 
   const exampleLines = useMemo(
@@ -132,36 +143,48 @@ export default function MerchantEditor({ data, onCreated }) {
 
   const position = useMemo(() => new Map(data.merchants.map((m, i) => [m, i])), [data.merchants]);
 
-  // Where the draft's matcher goes in data.matchers: the place the server
-  // will insert the row, since ties go to the later row
+  // The edited row's saved pattern gives way to the draft
+  const baseMatchers = useMemo(
+    () => (editing ? data.matchers.filter(({ merchant }) => merchant !== editing) : data.matchers),
+    [data.matchers, editing]
+  );
+
+  // Where the draft's matcher goes in baseMatchers: the place the server will
+  // put the row, since ties go to the later row
   const draftCut = useMemo(() => {
-    const regionRows = data.merchants.filter((m) => m.region === region);
-    const at = insertionIndex(regionRows, fields);
-    const before =
-      at < regionRows.length
-        ? position.get(regionRows[at])
-        : regionRows.length
-          ? position.get(regionRows.at(-1)) + 1
-          : data.merchants.length;
-    const cut = data.matchers.findIndex(({ merchant }) => position.get(merchant) >= before);
-    return cut === -1 ? data.matchers.length : cut;
-  }, [data.merchants, data.matchers, position, region, fields]);
+    let before;
+    if (editing && editing.name === fields.name.trim() && sameId(editing.parent_id, fields.parent_id)) {
+      before = position.get(editing);
+    } else {
+      // The server takes the edited row and its branches out before it sorts
+      const regionRows = others.filter((m) => m.region === region && !(editing && sameId(m.parent_id, editing.id)));
+      const at = insertionIndex(regionRows, fields);
+      before =
+        at < regionRows.length
+          ? position.get(regionRows[at])
+          : regionRows.length
+            ? position.get(regionRows.at(-1)) + 1
+            : data.merchants.length;
+    }
+    const cut = baseMatchers.findIndex(({ merchant }) => position.get(merchant) >= before);
+    return cut === -1 ? baseMatchers.length : cut;
+  }, [data.merchants, others, baseMatchers, position, region, fields, editing]);
 
 
   // Run each example against the full dataset with the draft row in place
   const exampleResults = useMemo(() => {
     if (draftMatcher.state !== 'ok') return [];
-    const matchers = spliceAt(data.matchers, draftCut, draftMatcher.matcher);
+    const matchers = spliceAt(baseMatchers, draftCut, draftMatcher.matcher);
     return exampleLines.map((text) => ({ text, match: findMerchantMatch(text, matchers) }));
-  }, [draftMatcher, data.matchers, draftCut, exampleLines]);
+  }, [draftMatcher, baseMatchers, draftCut, exampleLines]);
 
-  const otherExamples = useMemo(() => data.merchants.flatMap((m) => parseExamples(m.transaction_text_examples)), [data.merchants]);
+  const otherExamples = useMemo(() => others.flatMap((m) => parseExamples(m.transaction_text_examples)), [others]);
 
   function generatePattern() {
     const result = choosePattern(exampleLines, {
       withDraft: (pattern) => {
         const [matcher] = buildMatchers([{ ...fields, transaction_text_regexp: pattern, id: DRAFT_ID }]);
-        return matcher ? spliceAt(data.matchers, draftCut, matcher) : null;
+        return matcher ? spliceAt(baseMatchers, draftCut, matcher) : null;
       },
       isDraft,
       otherExamples,
@@ -173,8 +196,9 @@ export default function MerchantEditor({ data, onCreated }) {
   // Fills the form from a looked-up place (see PlaceLookup)
   async function applyPlace(place) {
     const found = [];
-    const nextRegion = regionForCountry(data.regions, place.country) || region;
-    const parent = findParentByDomain(data.merchants, place);
+    // An edited row stays in its region's file
+    const nextRegion = editing ? region : regionForCountry(data.regions, place.country) || region;
+    const parent = hasBranches ? null : findParentByDomain(others, place);
     const derived = place.mccCandidates[0];
     const mcc = parent?.mcc || derived?.mcc || '';
     const name = parent && place.locality ? `${parent.name} - ${place.locality}` : place.name;
@@ -190,7 +214,7 @@ export default function MerchantEditor({ data, onCreated }) {
       parent_id: parent?.id || '',
       mcc,
       // Branches leave the category (and icon) to the parent
-      category_id: parent ? '' : categoryForMcc(data.merchants, mcc),
+      category_id: parent ? '' : categoryForMcc(others, mcc),
     };
     const suggested = {
       transaction_text_regexp: suggestPattern(place.name, parent, place.locality),
@@ -200,7 +224,7 @@ export default function MerchantEditor({ data, onCreated }) {
 
     const sources = [place.google_place_id && 'Google Maps', place.apple_place_id && 'Apple Maps'].filter(Boolean);
     found.push(`Filled from ${sources.join(' and ')}.`);
-    for (const dup of findDuplicates(data.merchants, place)) {
+    for (const dup of findDuplicates(others, place)) {
       found.push(`Warning: this place is already in the dataset as “${dup.name}” (${dup.region}).`);
     }
     if (parent) found.push(`Parent set to “${parent.name}” (${parent.region}), because it has the same website domain.`);
@@ -286,19 +310,26 @@ export default function MerchantEditor({ data, onCreated }) {
     autoFilled.current = {};
   }
 
+  function cancel() {
+    reset();
+    setOpen(false);
+    if (editing) onEditDone();
+  }
+
   async function submit(e) {
     e.preventDefault();
     setSaving(true);
     setError('');
     try {
       const body = {
+        id: editing?.id,
         region,
         merchant: fields,
         examples: exampleLines,
         icon: icon ? { data: await readAsBase64(icon.file) } : null,
       };
       const res = await fetch('/__editor/merchants', {
-        method: 'POST',
+        method: editing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -306,7 +337,7 @@ export default function MerchantEditor({ data, onCreated }) {
       if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
       reset();
       setOpen(false);
-      onCreated({ ...result.merchant, region: result.region });
+      onSaved({ ...result.merchant, region: result.region });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -330,7 +361,7 @@ export default function MerchantEditor({ data, onCreated }) {
   return (
     <form className={styles.card} onSubmit={submit}>
       <div className={styles.header}>
-        <h2>Add merchant</h2>
+        <h2>{editing ? `Edit ${editing.name || 'merchant'}` : 'Add merchant'}</h2>
         <span className={styles.devTag}>writes to src/public/data</span>
       </div>
 
@@ -346,8 +377,8 @@ export default function MerchantEditor({ data, onCreated }) {
       )}
 
       <div className={styles.grid}>
-        <Field label="Region *">
-          <select className={styles.input} required value={region} onChange={(e) => setRegion(e.target.value)}>
+        <Field label="Region *" hint={editing ? 'An edited merchant stays in its region.' : undefined}>
+          <select className={styles.input} required disabled={Boolean(editing)} value={region} onChange={(e) => setRegion(e.target.value)}>
             <option value="">Choose…</option>
             {data.regions.map((r) => (
               <option key={r.code} value={r.code}>
@@ -361,8 +392,16 @@ export default function MerchantEditor({ data, onCreated }) {
           <input className={styles.input} required value={fields.name} onChange={set('name')} />
         </Field>
 
-        <Field label="Parent merchant" hint="For a branch of a brand. Leave empty for a brand or a single business." wide>
-          <select className={styles.input} value={fields.parent_id} onChange={set('parent_id')}>
+        <Field
+          label="Parent merchant"
+          hint={
+            hasBranches
+              ? 'This merchant has branches, so it cannot have a parent.'
+              : 'For a branch of a brand. Leave empty for a brand or a single business.'
+          }
+          wide
+        >
+          <select className={styles.input} disabled={hasBranches} value={fields.parent_id} onChange={set('parent_id')}>
             <option value="">None</option>
             {parentGroups.map((g) => (
               <optgroup key={g.region.code} label={g.region.name}>
@@ -500,15 +539,12 @@ export default function MerchantEditor({ data, onCreated }) {
         <button
           type="button"
           className={styles.secondary}
-          onClick={() => {
-            reset();
-            setOpen(false);
-          }}
+          onClick={cancel}
         >
           Cancel
         </button>
         <button type="submit" className={styles.primary} disabled={saving || draftMatcher.state === 'invalid'}>
-          {saving ? 'Saving…' : 'Save merchant'}
+          {saving ? 'Saving…' : editing ? 'Save changes' : 'Save merchant'}
         </button>
       </div>
     </form>
